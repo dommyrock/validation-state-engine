@@ -1,0 +1,9 @@
+<!-- Hello World! -->
+<xml>
+   <greeting>
+      <message Childnode="child_val">Welcome to XML</message>
+      <author>Copilot</author>
+      <date>2023</date>
+   </greeting>
+</xml>
+
