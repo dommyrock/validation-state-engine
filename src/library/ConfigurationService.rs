@@ -1,13 +1,11 @@
-use std::sync::Arc;
-use tokio::sync::watch;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
 use std::path::PathBuf;
+use std::sync::Arc;
+use crate::RuleType;
+
+use tokio::{fs::File, io::AsyncReadExt, sync::watch};
 use quick_xml::de::from_str;
 use serde::Deserialize;
-use std::time::Duration;
 
-use crate::RuleType;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Configuration {
@@ -16,7 +14,7 @@ pub struct Configuration {
 
 pub struct ConfigurationService {
     config_path: PathBuf,
-    tx: watch::Sender<Configuration>,
+    _tx: watch::Sender<Configuration>,
     rx: watch::Receiver<Configuration>,
 }
 
@@ -25,16 +23,17 @@ impl ConfigurationService {
         let initial_config = Self::read_config(&config_path).await
             .expect("Failed to read initial configuration");
         
-        let (tx, rx) = watch::channel(initial_config);
+        let (_tx, rx) = watch::channel(initial_config);
         
         let service = Arc::new(Self {
             config_path: PathBuf::from(config_path),
-            tx,
+            _tx,
             rx,
         });
         
         // Spawn the file watcher
         let service_clone = Arc::clone(&service);
+
         tokio::spawn(async move {
             service_clone.watch_config_changes().await;
         });
@@ -59,7 +58,7 @@ impl ConfigurationService {
     }
     
     async fn watch_config_changes(&self) {
-        let mut interval = tokio::time::interval(Duration::from_secs(1));
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
         
         loop {
             interval.tick().await;

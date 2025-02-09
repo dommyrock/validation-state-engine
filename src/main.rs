@@ -1,17 +1,14 @@
 mod library;
 use library::ConfigurationService::Configuration;
+use library::RuleType;
 use library::{
     BusinessRuleService::BusinessRuleService, ConfigurationService::ConfigurationService,
 };
-use library::RuleType;
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use tokio::task;
 
 #[tokio::main]
 async fn main() {
-   
     let cfg = Configuration {
         rules: vec![
             RuleType::SideJobPrevention,
@@ -29,27 +26,28 @@ async fn main() {
     loop {
         // Wait for configuration changes
         if config_rx.changed().await.is_ok() {
-          
-
-            // Spawn tasks for the new configuration
+            // Spawn tasks for the new configuration (memory mapped XML parsed BusinessRule state changes)
             let rules = config_rx.borrow().clone().rules;
 
-            println!("\nConfiguration change detected - spawning {} new tasks...",rules.len());
+            println!(
+                "\nConfiguration change detected - spawning {} new tasks...",
+                rules.len()
+            );
 
             let mut tasks = Vec::with_capacity(rules.len());
 
-            for (i, _rule) in rules.iter().enumerate() {
+            for (_i, rule) in rules.iter().enumerate() {
                 let service_clone = Arc::clone(&service);
-                let task_name = format!("Task_{}", i + 1);
-                let task_name_clone = task_name.clone();
 
-                let handle = tokio::spawn(async move {
-                    if let Err(e) = service_clone.process_rules(task_name_clone).await {
+                let task_name = format!("{:?}", rule);//temp placeholder
+
+                let task = tokio::spawn(async move {
+                    if let Err(e) = service_clone.process_rules(&task_name).await {
                         eprintln!("{} encountered an error: {}", task_name, e);
                     }
                 });
 
-                tasks.push(handle);
+                tasks.push(task);
             }
 
             // Wait for all tasks to complete

@@ -19,7 +19,7 @@ impl BusinessRuleService {
     }
 
     // Process a single set of rules to completion
-    pub async fn process_rules(&self, task_name: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn process_rules(&self, task_name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let rules = self.config_rx.borrow().clone().rules;
         println!("Task {} starting to process rules: {:?}", task_name, rules);
 
@@ -33,4 +33,9 @@ impl BusinessRuleService {
         println!("Task {} completed processing all rules", task_name);
         Ok(())
     }
+
+    //TODO: Implement a method to get the current set of rules
+
+    //TODO: Implement a method to get specific rule by ID (enum RuleType)
+    
 }

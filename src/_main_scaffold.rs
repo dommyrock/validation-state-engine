@@ -193,9 +193,18 @@ async fn main() {
 /*
     Idea here is to reuse rules from BusinessRules and make a small 'DEMO engine' out of them using:
 
-        1) Async Rust (You could check random axum or actix example how the service / api instantiation is done in rust / instead of DI )
+        1) Async Rust 
+            Axum / Tokio DI example (dyn dispatch vs Generics)
+                1 https://github.com/tokio-rs/axum/blob/main/examples/dependency-injection/src/main.rs
+                2 https://github.com/tokio-rs/axum/blob/main/examples/prometheus-metrics/src/main.rs (Prometheus metrics example)
+                3 https://github.com/tokio-rs/axum/blob/main/examples/sse/src/main.rs (Server-Sent Events example)
+s       
 
         2) Rust Errors --> custom Erorr type (Representing BR Error class)
+            https://github.com/tokio-rs/axum/blob/main/examples/validator/src/main.rs (Validation example - maybe you can kinda see Error handling here) 
+        
+        2.1) XML READER
+            https://crates.io/crates/quick-xml
 
         3) Type State pattern (where we parse the incoming + fetched data into known TYPE that we can reason abotut in few descriptive ways/branches)
         We basicaly want state machine (state of our collected BRErors) in our typesystem
@@ -208,5 +217,11 @@ async fn main() {
         https://cliffle.com/blog/rust-typestate/
         https://zerotomastery.io/blog/rust-typestate-patterns/
 
-        6) Experiment with that cloudflare voice -- agent model / that uses claude mcp i think (or just plug in voice srevice + custom tool caling ageny)
+        6) Experiment with that cloudflare 
+            1 Durable objects 
+            2 voice -- agent model / that uses claude mcp i think (or just plug in voice srevice + custom tool caling ageny)
+            https://www.youtube.com/watch?v=TcOytsfva0o
+                - MCP server https://developers.cloudflare.com/agents/capabilities/mcp-server/ (i could set up SSE on this too)
+                - Websockets https://developers.cloudflare.com/workers/runtime-apis/websockets
+
 */
