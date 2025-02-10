@@ -1,26 +1,26 @@
 #[derive(Debug)]
-pub struct BusinessRuleError {
+pub struct RuleValidationError {
     rule_name: String,
-    failure_reason: String, //business_rule",
-    message: String, //"A shift that starts within 60 minutes cannot be self-cancelled, please call your Local Office for assistance.",
-    tag: String,     //"Any CandidateStatusId",
+    failure_reason: String,
+    message: String,
+    tag: String,
     success: bool,
     error_code: u16,
 }
 pub const ERR_CODE: u16 = 403;
+pub const FAIL_REASON: &str = "rule_validation";
 
-impl std::fmt::Display for BusinessRuleError {
+impl std::fmt::Display for RuleValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "Business rule '{}' failed: {} | CODE: {}",
-            self.rule_name, self.message,self.error_code
+            self.rule_name, self.message, self.error_code
         )
     }
 }
 
-
-impl std::error::Error for BusinessRuleError {}
+impl std::error::Error for RuleValidationError {}
 
 #[cfg(test)]
 mod tests {
@@ -29,12 +29,12 @@ mod tests {
 
     /* Example command to runt this test
     (NOW) cargo test -- --nocapture
-    (FUTURE) cargo test --lib BusinessRuleError -- --nocapture (when we move it to --lib )*/
+    (FUTURE) cargo test --lib business_rule_error -- --nocapture (when we move it to --lib )*/
 
-    fn produce_error() -> Result<(), BusinessRuleError> {
-        Err(BusinessRuleError {
+    fn produce_error() -> Result<(), RuleValidationError> {
+        Err(RuleValidationError {
             rule_name: "ShiftCancellation".to_string(),
-            failure_reason: "business_rule".to_string(),
+            failure_reason: FAIL_REASON.to_string(),
             message: "A shift that starts within 60 minutes cannot be self-cancelled, please call your Local Office for assistance.".to_string(),
             tag: "Missmatch CandidateId".to_string(),
             success: false,
@@ -60,9 +60,9 @@ mod tests {
 
     #[test]
     fn test_debug() {
-        let error = BusinessRuleError {
+        let error = RuleValidationError {
             rule_name: "ShiftCancellation".to_string(),
-            failure_reason: "business_rule".to_string(),
+            failure_reason: FAIL_REASON.to_string(),
             message: "A shift that starts within 60 minutes cannot be self-cancelled, please call your Local Office for assistance.".to_string(),
             tag: "Missmatch CandidateId".to_string(),
             success: false,
@@ -71,7 +71,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", error),
-            "BusinessRuleError { rule_name: \"ShiftCancellation\", failure_reason: \"business_rule\", message: \"A shift that starts within 60 minutes cannot be self-cancelled, please call your Local Office for assistance.\", tag: \"Missmatch CandidateId\", success: false, error_code: 403 }"
+            "RuleValidationError { rule_name: \"ShiftCancellation\", failure_reason: \"rule_validation\", message: \"A shift that starts within 60 minutes cannot be self-cancelled, please call your Local Office for assistance.\", tag: \"Missmatch CandidateId\", success: false, error_code: 403 }"
         );
     }
 }

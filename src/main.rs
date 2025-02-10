@@ -1,36 +1,33 @@
 mod library;
-use library::ConfigurationService::Configuration;
+
 use library::RuleType;
 use library::{
-    BusinessRuleService::BusinessRuleService, ConfigurationService::ConfigurationService,
+    rule_validation_service::RuleValidationService, configuration_service::ConfigurationService,
 };
-
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
-    let cfg = Configuration {
-        rules: vec![
-            RuleType::SideJobPrevention,
-            RuleType::ExhaustionPrevention,
-            RuleType::LastMinuteBookingPrevention,
-        ],
-    };
+    let cfg = vec![
+        RuleType::SideJobPrevention,
+        RuleType::ExhaustionPrevention,
+        RuleType::LastMinuteActionPreventionForBooking,
+    ];
 
-    let config_service = ConfigurationService::new("validator_config.xml".to_string()).await;
-    let service = BusinessRuleService::new(Arc::clone(&config_service), cfg).await;
+    let config_service = ConfigurationService::new("validator_config.xml".to_string(),cfg).await;
+    let service = RuleValidationService::new(Arc::clone(&config_service)).await;
 
     // Get a receiver to watch for configuration changes
     let mut config_rx = config_service.subscribe();
 
     loop {
-        // Wait for configuration changes
+        //Wait for configuration changes
         if config_rx.changed().await.is_ok() {
             // Spawn tasks for the new configuration (memory mapped XML parsed BusinessRule state changes)
-            let rules = config_rx.borrow().clone().rules;
+            let rules = config_rx.borrow().clone().config_rules;
 
             println!(
-                "\nConfiguration change detected - spawning {} new tasks...",
+                "\nConfiguration change detected - spawning {} new tasks ...",
                 rules.len()
             );
 
@@ -39,7 +36,7 @@ async fn main() {
             for (_i, rule) in rules.iter().enumerate() {
                 let service_clone = Arc::clone(&service);
 
-                let task_name = format!("{:?}", rule);//temp placeholder
+                let task_name = format!("{:?}", rule); //temp placeholder
 
                 let task = tokio::spawn(async move {
                     if let Err(e) = service_clone.process_rules(&task_name).await {

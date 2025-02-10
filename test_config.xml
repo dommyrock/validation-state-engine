@@ -1,9 +1,19 @@
-<!-- Hello World! -->
-<xml>
-   <greeting>
-      <message Childnode="child_val">Welcome to XML</message>
-      <author>Copilot</author>
-      <date>2023</date>
-   </greeting>
-</xml>
-
+<config>
+   <!--
+		Test Rules Config ======================
+		This config is parsed and used as 'Rule validation engine'
+	-->
+   <ValidationRules>
+      <Groups>
+         <ValidationRulesGroup Group="Shift">
+            <ValidationRule Type="SideJobPrevention" PositionTypeIDs="1" FromMatchStatusId="0" Enabled="True">
+               <Rules>
+                  <Rule ForCandidateStatusIds="1" Enforce="True" />
+                  <Rule ForCandidateStatusIds="2,3,4" Enforce="True" />
+                  <Rule ForCandidateStatusIds="5" Enforce="False" />
+               </Rules>
+            </ValidationRule>
+         </ValidationRulesGroup>
+      </Groups>
+   </ValidationRules>
+</config>

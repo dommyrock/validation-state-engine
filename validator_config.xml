@@ -1,4 +1,43 @@
-<xml>
+<config>
+   <!--
+		Rules Config ======================
+		This config is parsed and used as 'Rule validation engine'
+	-->
+   <ValidationRules>
+      <Groups>
+         <ValidationRulesGroup Group="Candidate">
+            <ValidationRule Type="IndecisivePrevention" Enabled="True">
+               <Rules>
+                  <Rule ForCandidateStatusIds="" IfShiftEndReasonIds="" Enforce="False" ForTheNextXDays="" />
+               </Rules>
+            </ValidationRule>
+         </ValidationRulesGroup>
 
+         <ValidationRulesGroup Group="Shift">
+            <ValidationRule Type="SideJobPrevention" PositionTypeIDs="1" FromMatchStatusId="0" Enabled="True">
+               <Rules>
+                  <Rule ForCandidateStatusIds="" Enforce="" />
+               </Rules>
+            </ValidationRule>
 
-</xml>
+            <ValidationRule Type="LastMinuteActionPreventionForBooking" Enabled="True">
+               <Rules>
+                  <Rule ForCandidateStatusIds="" Minutes="" Enforce="False" />
+               </Rules>
+            </ValidationRule>
+
+            <ValidationRule Type="LastMinuteActionPreventionForCanceling" Enabled="False">
+               <Rules>
+                  <Rule ForCandidateStatusIds="" Minutes="" Enforce="False" />
+               </Rules>
+            </ValidationRule>
+
+            <ValidationRule Type="ExhaustionPrevention" FallbackShiftStatusId="1" Enabled="False">
+               <Rules>
+                  <Rule ForCandidateStatusIds="" ForShiftStatusIds="" HoursAllowed="" WithinXHours="" Enforce="False" />
+               </Rules>
+            </ValidationRule>
+         </ValidationRulesGroup>
+      </Groups>
+   </ValidationRules>
+</config>
