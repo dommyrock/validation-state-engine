@@ -78,3 +78,9 @@ impl ConfigurationService {
         }
     }
 }
+
+//TODO : Since we're cnverting XML content to Potential BusinessRuleError . 
+// -> We would need to impement the From trait .
+// -> Need to check error type that we're working here so that we can convert that error into ours or inverse. 
+
+// example-ref : https://learning-rust.github.io/docs/custom-error-types/ (last section)

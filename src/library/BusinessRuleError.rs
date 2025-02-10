@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct BusinessRuleError {
     rule_name: String,
     failure_reason: String, //business_rule",
@@ -18,18 +19,6 @@ impl std::fmt::Display for BusinessRuleError {
     }
 }
 
-impl std::fmt::Debug for BusinessRuleError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("BusinessRuleError")
-            .field("rule_name", &self.rule_name)
-            .field("failure_reason", &self.failure_reason)
-            .field("message", &self.message)
-            .field("tag", &self.tag)
-            .field("success", &self.success)
-            .field("error_code", &self.error_code)
-            .finish()
-    }
-}
 
 impl std::error::Error for BusinessRuleError {}
 
