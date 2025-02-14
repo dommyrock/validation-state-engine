@@ -1,14 +1,15 @@
 mod library;
+mod config;
 
+pub use self::library::errors::{Error, Result};
 use library::{
     configuration_service::ConfigurationService, rule_types::RuleType,
     rule_validation_service::RuleValidationService,
 };
 use std::sync::Arc;
-pub use self::library::errors::{Error, Result};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ! {
     let cfg = vec![
         RuleType::SideJobPrevention,
         RuleType::ExhaustionPrevention,
@@ -41,7 +42,6 @@ async fn main() {
 
                 let task = tokio::spawn(async move {
                     if let Err(e) = service_clone.process_rules(&task_name).await {
-                        //TODO this should have custom error type and push to Vec<CustomError>
                         eprintln!("{} encountered an error: {}", task_name, e);
                     }
                 });

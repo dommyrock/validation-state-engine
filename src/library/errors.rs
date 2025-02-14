@@ -1,8 +1,7 @@
 use std::str::FromStr;
-
 use derive_more::From;
-//derive_more enables us to use From without requiring us to implement Display on each error type.
 use quick_xml::DeError;
+//derive_more enables us to use From without requiring us to implement Display on each error type.
 
 use super::rule_types::RuleType;
 
@@ -40,7 +39,28 @@ impl From<&str> for Error {
         Self::ValidationError(RuleType::from_str(s).expect(">> Invalid RuleType <<"))
     }
 }
+/* TOOD: 
+We now get info about speciffic RuleType but, we still need some form of fine grained details From RuleValidationError
 
+
+--->     pub struct RuleValidationError {
+            rule_name: String,
+            failure_reason: String,
+            message: String,
+            tag: String,
+            success: bool,
+            error_code: usize,
+        }   
+
+IF needed i can convert into my error type
+impl From<io::Error> for AppError { //AppError = Error in my case
+    fn from(error: io::Error) -> Self {
+        AppError {
+            kind: String::from("io"),
+            message: error.to_string(),
+        }
+    }
+} */
 impl std::error::Error for Error {}
 
 //cargo test test_errors -- --nocapture

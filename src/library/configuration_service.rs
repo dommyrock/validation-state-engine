@@ -1,78 +1,13 @@
+pub use crate::config::prelude::*;
+use crate::Error as ValidationError;
 use crate::RuleType;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use quick_xml::de::from_str;
-use serde::de::{Deserializer, Error};
-use serde::Deserialize;
+use quick_xml::Reader;
 use tokio::{fs::File, io::AsyncReadExt, sync::watch};
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct Config {
-    #[serde(rename = "ValidationRules")]
-    pub validation_rules: ValidationRulesContainer,
-    #[serde(skip_deserializing)]
-    pub config_rules: Vec<RuleType>,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct ValidationRulesContainer {
-    #[serde(rename = "Groups")]
-    pub groups: GroupsContainer,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct GroupsContainer {
-    #[serde(rename = "ValidationRulesGroup")]
-    pub validation_rules_groups: Vec<ValidationRulesGroupSettings>,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct ValidationRulesGroupSettings {
-    #[serde(rename = "@Group")]
-    pub group: String,
-    #[serde(rename = "ValidationRule")]
-    pub validation_rules: Vec<ValidationRuleSettings>,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct ValidationRuleSettings {
-    #[serde(rename = "@Type")] // Fix for XML attribute
-    pub rule_type: RuleType,
-    #[serde(rename = "@Enabled", deserialize_with = "parse_bool")]
-    pub enabled: bool, // Needs custom parsing if you want a `bool`
-    #[serde(rename = "@FallbackShiftStatusId", default)]
-    pub fallback_shift_status_id: Option<i32>,
-    #[serde(rename = "@PositionTypeIDs", deserialize_with = "parse_csv_string", default)]
-    pub position_type_ids: Vec<i32>, // Will be empty vec when attribute is missing
-    #[serde(rename = "@FromMatchStatusId",default)]
-    pub from_match_status_id: Option<i32>,
-}
-
-fn parse_csv_string<'de, D>(deserializer: D) -> Result<Vec<i32>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    s.split(',')
-        .filter(|s| !s.is_empty())
-        .map(|s| s.parse::<i32>().map_err(Error::custom))
-        .collect()
-}
-
-fn parse_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    match s.to_lowercase().as_str() {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err(D::Error::custom(format!("Invalid boolean value: {}", s))),
-    }
-}
-
-// TODO :Check dependency injection exampple to fugure out if will use trait objects or generics
 
 // pub trait ConfigurationProvider {
 //     async fn new(config_path: String) -> Arc<Self>;
@@ -86,6 +21,8 @@ pub struct ConfigurationService {
 }
 
 impl ConfigurationService {
+    ///Spawns a task that watches for changes in the configuration file
+    /// NOTE: Be careful to validate that ValidationRule handlers actually run in the separate thasks!
     pub async fn new(config_path: String, config_rules: Vec<RuleType>) -> Arc<Self> {
         let mut initial_config = Self::read_config(&config_path)
             .await
@@ -116,23 +53,37 @@ impl ConfigurationService {
         self.rx.clone()
     }
 
-    async fn read_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
-        let mut file = File::open(path).await?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).await?;
+//     async fn quick_watcherr(path: &str) { ///tODO
+//         //let mut reader: Reader<&[u8]> = Reader::from_str(path);
+//         let mut one_sec = tokio::time::interval(std::time::Duration::from_secs(1));
 
-        let config: Config = from_str(&contents)?;
-        //TODO: I would need to update the 'Box<dyn std::error::Error>' to 'DeError' which from_str returns 
-        // potentiallly implement my own error for this and From trait for it. so that i can convert it to my own error type from DeError.
-        // I would need to propagate and handle this error in the callers of this function.
-        Ok(config)
-    }
+// //         let xml = "<tag1>text1</tag1><tag1>text2</tag1>\
+// //         <tag1>text3</tag1><tag1><tag2>text4</tag2></tag1>";
+
+// // let mut reader = Reader::from_str(xml);
+// // reader.config_mut().trim_text(true);
+
+
+//         let reader = match Reader::from_file(path) {
+//             Ok(mut r) => {r.config_mut().trim_text(true); r},
+//             Err(e) => eprint!("Error: {}", e),
+//         };
+
+//         loop { 
+//             one_sec.tick().await;
+
+//             match reader.read_event(){
+
+//             }
+//         }
+//         //example https://github.com/tafia/quick-xml/blob/8f91a9c20eb67666eaccbc4e37fbe5e3adde3a44/examples/read_texts.rs#L19
+//     }
 
     async fn watch_config_changes(&self) {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        let mut one_sec = tokio::time::interval(std::time::Duration::from_secs(1));
 
         loop {
-            interval.tick().await;
+            one_sec.tick().await;
 
             match Self::read_config(self.config_path.to_str().unwrap()).await {
                 Ok(new_config) => {
@@ -143,18 +94,19 @@ impl ConfigurationService {
                         }
                     }
                 }
-                Err(e) => eprintln!("Error reading configuration: {}", e),
+                Err(e) => eprintln!("Config ERROR: {e}"),
             }
         }
     }
+    async fn read_config(path: &str) -> Result<Config, ValidationError> {
+        let mut file = File::open(path).await?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await?;
+
+        let config: Config = from_str(&contents)?;
+        Ok(config)
+    }
 }
-
-//TODO : Since we're cnverting XML content to Potential ValidationRuleError .
-/*
--> IMPLEMENT 'FROM' TRAIT FOR ANY
--> Need to check error type that we're working here so that we can convert that error into ours or inverse.
-
-example-ref : https://learning-rust.github.io/docs/custom-error-types/ (last section) */
 
 #[cfg(test)]
 mod tests {

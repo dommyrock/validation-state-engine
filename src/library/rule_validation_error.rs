@@ -1,3 +1,7 @@
+
+
+//NOTE:: THIS IS NOT ACTUALLY USED YET 
+
 #[derive(Debug)]
 pub struct RuleValidationError {
     rule_name: String,

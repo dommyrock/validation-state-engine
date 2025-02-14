@@ -10,7 +10,7 @@
                <Rules>
                   <Rule ForCandidateStatusIds="1" Enforce="True" />
                   <Rule ForCandidateStatusIds="2,3,4" Enforce="True" />
-                  <Rule ForCandidateStatusIds="5" Enforce="False" />
+                  <Rule ForCandidateStatusIds="5" Enforce="" />
                </Rules>
             </ValidationRule>
          </ValidationRulesGroup>
