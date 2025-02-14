@@ -121,13 +121,10 @@ impl ConfigurationService {
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
 
-        //let _config_v1: Configuration = from_str(&contents)?;
-
         let config: Config = from_str(&contents)?;
-
-        //TODO: I need to create struct For Each rule type and have it tested in unit tests quick_xml::de::from_str; to vllidate correct parsing of XML file
-        //DOCS: https://crates.io/crates/quick-xml (check the 'Serde' section)
-
+        //TODO: I would need to update the 'Box<dyn std::error::Error>' to 'DeError' which from_str returns 
+        // potentiallly implement my own error for this and From trait for it. so that i can convert it to my own error type from DeError.
+        // I would need to propagate and handle this error in the callers of this function.
         Ok(config)
     }
 
