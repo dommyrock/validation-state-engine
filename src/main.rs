@@ -1,7 +1,6 @@
 mod library;
 mod config;
 
-pub use self::library::errors::{Error, Result};
 use library::{
     configuration_service::ConfigurationService, rule_types::RuleType,
     rule_validation_service::RuleValidationService,

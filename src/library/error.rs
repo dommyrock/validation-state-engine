@@ -1,11 +1,13 @@
 use std::str::FromStr;
 use derive_more::From;
+// 'derive_more' - enables us to use From without requiring us to implement Display on each error type.
 use quick_xml::DeError;
-//derive_more enables us to use From without requiring us to implement Display on each error type.
 
 use super::rule_types::RuleType;
 
 pub type Result<T> = core::result::Result<T, Error>;
+
+#[allow(unused)]
 
 #[derive(From, Debug)] //Serialize ,serde_as (crate) if we want automatic serialization for "Pretty" web error messages
 pub enum Error {
@@ -24,9 +26,27 @@ pub enum Error {
     XMLError(quick_xml::Error),
     #[from]
     SerdeError(DeError),
+    // SerdeError(String, usize),
     #[from]
     TokioError(tokio::time::error::Error),
 }
+
+// impl core::fmt::Display for Error {
+//     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+//         match self {
+//             Error::XMLError(msg, pos) => write!(f, "{} at position {}", msg, pos),
+//             _ => write!(f, "{:?}", self),
+//         }
+//     }
+// }
+// impl core::fmt::Display for Error {
+//     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+//         match self {
+//             Error::SerdeError(msg, pos) => write!(f, "{} at position {}", msg, pos),
+//             _ => write!(f, "{:?}", self),
+//         }
+//     }
+// }
 
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
@@ -39,6 +59,37 @@ impl From<&str> for Error {
         Self::ValidationError(RuleType::from_str(s).expect(">> Invalid RuleType <<"))
     }
 }
+
+impl From<Error> for quick_xml::Error {
+    fn from(e: Error) -> quick_xml::Error {
+        quick_xml::Error::Io(std::sync::Arc::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("{}", e),
+        )))
+    }
+
+// I would need to support this string into the quick_xml::Error conversion bellow 
+// return Err(Error::XMLError(quick_xml::Error::from(format!(
+//     "Config ERROR at position {}: {:?}",
+//     reader.buffer_position(),
+//     e
+// ))));
+
+/* says i can't define it here ....
+impl From<String> for quick_xml::Error {
+    fn from(s: String) -> quick_xml::Error {
+        quick_xml::Error::Io(std::sync::Arc::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            s,
+        )))
+    }
+}
+*/
+
+
+
+}
+
 /* TOOD: 
 We now get info about speciffic RuleType but, we still need some form of fine grained details From RuleValidationError
 

@@ -1,11 +1,11 @@
 pub use crate::config::prelude::*;
-use crate::Error as ValidationError;
+use crate::library::{Error, Result};
 use crate::RuleType;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use quick_xml::de::from_str;
+use quick_xml::{de::from_str, events::Event};
 use quick_xml::Reader;
 use tokio::{fs::File, io::AsyncReadExt, sync::watch};
 
@@ -53,34 +53,55 @@ impl ConfigurationService {
         self.rx.clone()
     }
 
-//     async fn quick_watcherr(path: &str) { ///tODO
-//         //let mut reader: Reader<&[u8]> = Reader::from_str(path);
-//         let mut one_sec = tokio::time::interval(std::time::Duration::from_secs(1));
+    async fn read_config(path: &str) -> Result<Config> {
+        let mut file = File::open(path).await?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await?;
 
-// //         let xml = "<tag1>text1</tag1><tag1>text2</tag1>\
-// //         <tag1>text3</tag1><tag1><tag2>text4</tag2></tag1>";
+        let mut reader = Reader::from_str(&contents);
+        reader.config_mut().trim_text(true);
+        let config: Config = from_str(&contents)?;
 
-// // let mut reader = Reader::from_str(xml);
-// // reader.config_mut().trim_text(true);
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(e)) if e.name().as_ref() == b"rule" => {
+                    let rule_text = reader.read_text(e.name())
+                        // .map_err(|e| format!("Error reading text at position {}: {:?}", reader.buffer_position(), e))?;
+                        .map_err(|e| quick_xml::DeError::Custom(format!(
+                            "Error reading text at position {}: {:?}",
+                            reader.buffer_position(),
+                            e
+                        )))?;
+                    //config.config_rules.push(RuleType::new(rule_text));
+                }
+                Ok(Event::Eof) => break,
+                        // )));
 
+                Err(e) => {
+                    // return Err(Error::SerdeError(
+                    //     format!("Config ERROR: {:?}", e),
+                    //     reader.buffer_position() as usize,
+                    // ));
+                        return Err(Error::IoError(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("Config ERROR at position {}: {:?}", reader.error_position(), e),
+                        )));
+                    //v2 return  Err(Error::XMLError(e)); // reader.error_pos() is the position of the error
+                    //v1 return Err(Error::XMLError(quick_xml::Error::Custom(format!(
+                    //     "Config ERROR at position {}: {:?}",
+                    //     reader.buffer_position(),
+                    //     e
+                    // ))));
+                }
+                _ => (),
+            }
+        }
 
-//         let reader = match Reader::from_file(path) {
-//             Ok(mut r) => {r.config_mut().trim_text(true); r},
-//             Err(e) => eprint!("Error: {}", e),
-//         };
-
-//         loop { 
-//             one_sec.tick().await;
-
-//             match reader.read_event(){
-
-//             }
-//         }
-//         //example https://github.com/tafia/quick-xml/blob/8f91a9c20eb67666eaccbc4e37fbe5e3adde3a44/examples/read_texts.rs#L19
-//     }
+        Ok(config)
+    }
 
     async fn watch_config_changes(&self) {
-        let mut one_sec = tokio::time::interval(std::time::Duration::from_secs(1));
+        let mut one_sec = tokio::time::interval(std::time::Duration::from_millis(300));
 
         loop {
             one_sec.tick().await;
@@ -98,7 +119,7 @@ impl ConfigurationService {
             }
         }
     }
-    async fn read_config(path: &str) -> Result<Config, ValidationError> {
+    async fn read_config_v1(path: &str) -> core::result::Result<Config, Error> {
         let mut file = File::open(path).await?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
