@@ -1,7 +1,7 @@
-use crate::library::configuration_service::ValidationRulesGroupSettings;
-use crate::ConfigurationService;
 use crate::config::prelude::*;
+use crate::library::configuration_service::ValidationRulesGroupSettings;
 use crate::library::Result;
+use crate::{ConfigurationService, CONFIG_RULES};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,8 +19,7 @@ impl RuleValidationService {
 
     // Process a single set of rules to completion
     pub async fn process_rules(&self, task_name: &str) -> Result<()> {
-        //Parsed XML Rules to memore
-        let rules: Vec<ValidationRulesGroupSettings> = self
+        let rules_from_config: Vec<ValidationRulesGroupSettings> = self
             .config_rx
             .borrow()
             .clone()
@@ -28,14 +27,15 @@ impl RuleValidationService {
             .groups
             .validation_rules_groups;
 
-        // let eval = rules.iter().filter(|x| rule_c)
-        println!("Task {} starting to process rules: {:?}", task_name, rules);
+        println!(
+            "Task {} starting to process rules:",
+            task_name //, rules_from_config
+        );
 
-        // Process each rule
-        for rule in rules {
-            // Simulate some actual processing work
-            println!("Task {} processing rule: {:?}", task_name, rule);
-            //tokio::time::sleep(Duration::from_millis(500)).await;
+        for rule in rules_from_config {
+            // println!("Task {} processing rule: {:?}", task_name, rule);
+            println!("Task {} processing rule", task_name);
+            //DO WORK HERE ...
         }
 
         println!("Task {} completed processing all rules", task_name);

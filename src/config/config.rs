@@ -88,6 +88,6 @@ where
         "false" => Ok(false),
         "" => Ok(false),
         " " => Ok(false),
-        _ => Err(D::Error::custom(format!("Invalid boolean value: {}", s))),
+        _ => Err(D::Error::custom(format!("Invalid [THIS IS WHERE WE NEED TO PROPAGATE OUR CUSTOM ERR] >> boolean value: {}", s))),
     }
 }

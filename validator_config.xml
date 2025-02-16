@@ -16,7 +16,7 @@
          <ValidationRulesGroup Group="Shift">
             <ValidationRule Type="SideJobPrevention" PositionTypeIDs="1" FromMatchStatusId="0" Enabled="True">
                <Rules>
-                  <Rule ForCandidateStatusIds="" Enforce="" />
+                  <Rule ForCandidateStatusIds="" Enforce="true" />
                </Rules>
             </ValidationRule>
 
