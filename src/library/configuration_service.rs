@@ -1,19 +1,14 @@
 pub use crate::config::prelude::*;
 use crate::library::{Error, Result};
-use crate::RuleType;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use quick_xml::{de::from_str, events::Event};
-use quick_xml::Reader;
+use quick_xml::{DeError, Reader};
 use tokio::{fs::File, io::AsyncReadExt, sync::watch};
 
-// pub trait ConfigurationProvider {
-//     async fn new(config_path: String) -> Arc<Self>;
-//     fn subscribe(&self) -> watch::Receiver<Configuration>;
-// }
-
+#[derive(Debug)]
 pub struct ConfigurationService {
     config_path: PathBuf,
     tx: watch::Sender<Config>,
@@ -21,14 +16,12 @@ pub struct ConfigurationService {
 }
 
 impl ConfigurationService {
-    ///Spawns a task that watches for changes in the configuration file
+    ///Spawns a task that watches for changes in the configuration file </br>
     /// NOTE: Be careful to validate that ValidationRule handlers actually run in the separate thasks!
-    pub async fn new(config_path: String, config_rules: Vec<RuleType>) -> Arc<Self> {
-        let mut initial_config = Self::read_config(&config_path)
+    pub async fn new(config_path: String) -> Arc<Self> {
+        let initial_config = Self::read_config(&config_path)
             .await
             .expect("Failed to read initial configuration");
-
-        initial_config.config_rules = config_rules;
 
         let (tx, rx) = watch::channel(initial_config);
         //TODO : 'tx' --> In the future i might have separate task worker that updates xml file at random (to simulate "simulation engine" that updates the XML file)
@@ -65,27 +58,31 @@ impl ConfigurationService {
         loop {
             match reader.read_event() {
                 Ok(Event::Start(e)) if e.name().as_ref() == b"rule" => {
-                    let rule_text = reader.read_text(e.name())
+                    let rule_text = reader
+                        .read_text(e.name())
                         // .map_err(|e| format!("Error reading text at position {}: {:?}", reader.buffer_position(), e))?;
-                        .map_err(|e| quick_xml::DeError::Custom(format!(
-                            "Error reading text at position {}: {:?}",
-                            reader.buffer_position(),
-                            e
-                        )))?;
+                        .map_err(|e| {
+                            quick_xml::DeError::Custom(format!(
+                                "Error reading text at position {}: {:?}",
+                                reader.buffer_position(),
+                                e
+                            ))
+                        })?;
                     //config.config_rules.push(RuleType::new(rule_text));
                 }
                 Ok(Event::Eof) => break,
-                        // )));
-
+                // )));
                 Err(e) => {
-                    // return Err(Error::SerdeError(
-                    //     format!("Config ERROR: {:?}", e),
-                    //     reader.buffer_position() as usize,
-                    // ));
-                        return Err(Error::IoError(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("Config ERROR at position {}: {:?}", reader.error_position(), e),
-                        )));
+                    let cus_err = format!(
+                        "PRINT Config ERROR: {e} {:?}",
+                        reader.error_position() as usize,
+                    );
+                    println!("{:?}", cus_err);
+                    return Err(Error::SerdeError(quick_xml::DeError::Custom(cus_err)));
+                    // return Err(Error::IoError(std::io::Error::new(
+                    //     std::io::ErrorKind::InvalidData,
+                    //     format!("Config ERROR at position {}: {:?}", reader.error_position(), e),
+                    // )));
                     //v2 return  Err(Error::XMLError(e)); // reader.error_pos() is the position of the error
                     //v1 return Err(Error::XMLError(quick_xml::Error::Custom(format!(
                     //     "Config ERROR at position {}: {:?}",
@@ -101,13 +98,17 @@ impl ConfigurationService {
     }
 
     async fn watch_config_changes(&self) {
-        let mut one_sec = tokio::time::interval(std::time::Duration::from_millis(300));
+        let mut one_sec = tokio::time::interval(std::time::Duration::from_secs(1));
 
         loop {
             one_sec.tick().await;
 
             match Self::read_config(self.config_path.to_str().unwrap()).await {
                 Ok(new_config) => {
+                    // Preserve the non-deserialized config_rules from the current config
+                    // let current_config = self.rx.borrow();
+                    // new_config.config_rules = current_config.config_rules.clone();
+
                     if new_config != *self.rx.borrow() {
                         //clone ?
                         if let Err(e) = self.tx.send(new_config) {
@@ -116,6 +117,7 @@ impl ConfigurationService {
                     }
                 }
                 Err(e) => eprintln!("Config ERROR: {e}"),
+                // Err(e) => eprintln!("{:?}",DeError::Custom(format!("Config ERROR: {:?}", e))),
             }
         }
     }
@@ -132,15 +134,12 @@ impl ConfigurationService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::library::RuleType;
     use pretty_assertions::assert_eq;
 
     #[tokio::test]
     async fn test_rule_validation_settings_parsing() {
-        let service = ConfigurationService::new(
-            "test_config.xml".to_string(),
-            vec![RuleType::SideJobPrevention],
-        )
-        .await;
+        let service = ConfigurationService::new("test_config.xml".to_string()).await;
 
         // Get config via subscription
         let receiver = service.subscribe();

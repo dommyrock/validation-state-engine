@@ -1,4 +1,4 @@
-use crate::RuleType;
+use crate::library::RuleType;
 
 use serde::de::{Deserializer, Error};
 use serde::Deserialize;
@@ -7,8 +7,6 @@ use serde::Deserialize;
 pub struct Config {
     #[serde(rename = "ValidationRules")]
     pub validation_rules: ValidationRulesContainer,
-    #[serde(skip_deserializing)]
-    pub config_rules: Vec<RuleType>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

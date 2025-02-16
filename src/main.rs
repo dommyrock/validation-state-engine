@@ -1,21 +1,25 @@
-mod library;
 mod config;
+mod library;
 
 use library::{
-    configuration_service::ConfigurationService, rule_types::RuleType,
-    rule_validation_service::RuleValidationService,
+    configuration_service::ConfigurationService, rule_validation_service::RuleValidationService,
+    RuleType,
 };
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
-#[tokio::main]
-async fn main() -> ! {
-    let cfg = vec![
+static CONFIG_RULES: LazyLock<Vec<RuleType>> = LazyLock::new(|| {
+    vec![
         RuleType::SideJobPrevention,
         RuleType::ExhaustionPrevention,
         RuleType::LastMinuteActionPreventionForBooking,
-    ];
+    ]
+});
 
-    let config_service = ConfigurationService::new("validator_config.xml".to_string(), cfg).await;
+#[tokio::main]
+async fn main() -> ! {
+    let cfg = &*CONFIG_RULES;
+
+    let config_service = ConfigurationService::new("validator_config.xml".to_string()).await;
     let service = RuleValidationService::new(Arc::clone(&config_service)).await;
 
     // Get a receiver to watch for configuration changes
@@ -24,17 +28,22 @@ async fn main() -> ! {
     loop {
         //Wait for configuration changes
         if config_rx.changed().await.is_ok() {
-            // Spawn tasks for the new configuration (memory mapped XML parsed BusinessRule state changes)
-            let rules = config_rx.borrow().clone().config_rules;
+            // Spawn tasks for the new configuration
+            let validation_rule_groups = config_rx
+                .borrow()
+                .clone()
+                .validation_rules
+                .groups
+                .validation_rules_groups;
 
             println!(
                 "\nConfiguration change detected - spawning {} new tasks ...",
-                rules.len()
+                cfg.len()
             );
 
-            let mut tasks = Vec::with_capacity(rules.len());
+            let mut tasks = Vec::with_capacity(validation_rule_groups.len());
 
-            for (_i, rule) in rules.iter().enumerate() {
+            for (_i, rule) in cfg.iter().enumerate() {
                 let service_clone = Arc::clone(&service);
 
                 let task_name = format!("{:?}", rule); //temp placeholder

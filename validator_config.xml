@@ -22,7 +22,7 @@
 
             <ValidationRule Type="LastMinuteActionPreventionForBooking" Enabled="True">
                <Rules>
-                  <Rule ForCandidateStatusIds="" Minutes="" Enforce="False" />
+                  <Rule ForCandidateStatusIds="" Minutes="" Enforce="false" />
                </Rules>
             </ValidationRule>
 
