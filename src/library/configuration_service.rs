@@ -56,7 +56,8 @@ impl ConfigurationService {
         let config: Config = from_str(&contents)?;
 
         loop {
-            match reader.read_event() {//TODO: nonsense code ---refactor with custom deserializer
+            match reader.read_event() {
+                //TODO: nonsense code ---refactor with custom deserializer
                 Ok(Event::Start(e)) if e.name().as_ref() == b"rule" => {
                     let rule_text = reader
                         .read_text(e.name())
@@ -71,24 +72,9 @@ impl ConfigurationService {
                     //config.config_rules.push(RuleType::new(rule_text));
                 }
                 Ok(Event::Eof) => break,
-                // )));
-                Err(e) => {
-                    let cus_err = format!(
-                        "PRINT Config ERROR: {e} {:?}",
-                        reader.error_position() as usize,
-                    );
-                    println!("{:?}", cus_err);
-                    return Err(Error::SerdeError(quick_xml::DeError::Custom(cus_err)));
-                    // return Err(Error::IoError(std::io::Error::new(
-                    //     std::io::ErrorKind::InvalidData,
-                    //     format!("Config ERROR at position {}: {:?}", reader.error_position(), e),
-                    // )));
-                    //v2 return  Err(Error::XMLError(e)); // reader.error_pos() is the position of the error
-                    //v1 return Err(Error::XMLError(quick_xml::Error::Custom(format!(
-                    //     "Config ERROR at position {}: {:?}",
-                    //     reader.buffer_position(),
-                    //     e
-                    // ))));
+                Err(_e) => {
+                    //This ones never return since we have derivve Deserialize and custom deserializer fn in src/config/config.rs
+                    return Err(Error::SerdeError(quick_xml::DeError::Custom("never thrown -.-".to_string())));
                 }
                 _ => (),
             }

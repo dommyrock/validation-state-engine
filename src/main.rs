@@ -18,7 +18,7 @@ static CONFIG_RULES: LazyLock<Vec<RuleType>> = LazyLock::new(|| {
 
 #[tokio::main]
 async fn main() -> ! {
-    let cfg = &CONFIG_RULES;
+    let cfg = &*CONFIG_RULES;
     let config_service = ConfigurationService::new("validator_config.xml".to_string()).await;
     let service = RuleValidationService::new(Arc::clone(&config_service)).await;
 
@@ -52,7 +52,7 @@ async fn main() -> ! {
 
             println!(
                 "\nConfiguration change detected - spawning {} new tasks ...",
-                cfg.iter().len()
+                cfg.len()
             );
 
             let mut tasks = Vec::with_capacity(cfg.len());
