@@ -56,7 +56,7 @@ impl ConfigurationService {
         let config: Config = from_str(&contents)?;
 
         loop {
-            match reader.read_event() {
+            match reader.read_event() {//TODO: nonsense code ---refactor with custom deserializer
                 Ok(Event::Start(e)) if e.name().as_ref() == b"rule" => {
                     let rule_text = reader
                         .read_text(e.name())

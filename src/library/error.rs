@@ -60,36 +60,6 @@ impl From<&str> for Error {
     }
 }
 
-impl From<Error> for quick_xml::Error {
-    fn from(e: Error) -> quick_xml::Error {
-        quick_xml::Error::Io(std::sync::Arc::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("{}", e),
-        )))
-    }
-
-// I would need to support this string into the quick_xml::Error conversion bellow 
-// return Err(Error::XMLError(quick_xml::Error::from(format!(
-//     "Config ERROR at position {}: {:?}",
-//     reader.buffer_position(),
-//     e
-// ))));
-
-/* says i can't define it here ....
-impl From<String> for quick_xml::Error {
-    fn from(s: String) -> quick_xml::Error {
-        quick_xml::Error::Io(std::sync::Arc::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            s,
-        )))
-    }
-}
-*/
-
-
-
-}
-
 /* TOOD: 
 We now get info about speciffic RuleType but, we still need some form of fine grained details From RuleValidationError
 

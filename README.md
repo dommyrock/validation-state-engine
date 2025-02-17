@@ -20,3 +20,10 @@ Couple of examples
 - [RwLock](https://doc.rust-lang.org/std/sync/struct.RwLock.html)
 
 > One CONFIG Writer (task) and multiple Reader (tasks).
+
+---
+
+### Roadmap / Todo
+
+1. Tracing 
+2. Prometheus + Grafana

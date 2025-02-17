@@ -1,6 +1,7 @@
 mod config;
 mod library;
 
+use config::config::{ValidationRuleSettings, ValidationRulesGroupSettings};
 use library::{
     configuration_service::ConfigurationService, rule_validation_service::RuleValidationService,
     RuleType,
@@ -17,31 +18,46 @@ static CONFIG_RULES: LazyLock<Vec<RuleType>> = LazyLock::new(|| {
 
 #[tokio::main]
 async fn main() -> ! {
+    let cfg = &CONFIG_RULES;
     let config_service = ConfigurationService::new("validator_config.xml".to_string()).await;
     let service = RuleValidationService::new(Arc::clone(&config_service)).await;
 
     // Get a receiver to watch for configuration changes
     let mut config_rx = config_service.subscribe();
 
+    let filter_configured_groups =
+        |x: &ValidationRulesGroupSettings| -> Vec<ValidationRuleSettings> {
+            x.validation_rules
+                .iter()
+                .filter(|rule| cfg.contains(&rule.rule_type) && rule.enabled)
+                .cloned()
+                .collect()
+        };
+
     loop {
-        //Wait for configuration changes
+        //Wait for configuration changes / Spawn task handlers for processing Rule changes
         if config_rx.changed().await.is_ok() {
-            // Spawn tasks for the new configuration
-            let validation_rule_groups = config_rx
-                .borrow()
-                .clone()
+            let config_clone = config_rx.borrow().clone();
+
+            let validation_rule_groups: Vec<Vec<ValidationRuleSettings>> = config_clone
                 .validation_rules
                 .groups
-                .validation_rules_groups;
+                .validation_rules_groups
+                .iter()
+                .map(filter_configured_groups)
+                .filter(|x: &Vec<ValidationRuleSettings>| !x.is_empty())
+                .collect();
+
+            println!("Fetched {:#?} ", validation_rule_groups);
 
             println!(
                 "\nConfiguration change detected - spawning {} new tasks ...",
-                CONFIG_RULES.iter().len()
+                cfg.iter().len()
             );
 
-            let mut tasks = Vec::with_capacity(validation_rule_groups.len());
+            let mut tasks = Vec::with_capacity(cfg.len());
 
-            for (_i, rule) in CONFIG_RULES.iter().enumerate() {
+            for (_i, rule) in cfg.iter().enumerate() {
                 let service_clone = Arc::clone(&service);
 
                 let task_name = format!("{:?}", rule); //temp placeholder
