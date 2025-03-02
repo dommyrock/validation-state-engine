@@ -4,9 +4,13 @@ use crate::library::{Error, Result};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use quick_xml::{de::from_str, events::Event};
-use quick_xml::{DeError, Reader};
+use quick_xml::{de::from_str, events::Event, Reader};
 use tokio::{fs::File, io::AsyncReadExt, sync::watch};
+
+#[cfg(windows)]
+const LINE_ENDING: &'static str = "\r\n";
+#[cfg(not(windows))]
+const LINE_ENDING: &'static str = "\n";
 
 #[derive(Debug)]
 pub struct ConfigurationService {
@@ -21,7 +25,8 @@ impl ConfigurationService {
     pub async fn new(config_path: String) -> Arc<Self> {
         let initial_config = Self::read_config(&config_path)
             .await
-            .expect("Failed to read initial configuration");
+            .map_err(|e| format!("Initial config failed to load. / {e}"))
+            .unwrap();
 
         let (tx, rx) = watch::channel(initial_config);
         //TODO : 'tx' --> In the future i might have separate task worker that updates xml file at random (to simulate "simulation engine" that updates the XML file)
@@ -32,10 +37,11 @@ impl ConfigurationService {
             rx,
         });
 
-        // Spawn the file watcher
         let service_clone = Arc::clone(&service);
 
+        // Spawn the file watcher
         tokio::spawn(async move {
+            println!("Spawning CONFIG watcher ...");
             service_clone.watch_config_changes().await;
         });
 
@@ -46,43 +52,46 @@ impl ConfigurationService {
         self.rx.clone()
     }
 
+    /// reads config once.
     async fn read_config(path: &str) -> Result<Config> {
-        let mut file = File::open(path).await?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).await?;
+        println!("Reader -- reading config ... ");
+        let xml = std::fs::read_to_string(path)?;
+        let mut reader = Reader::from_str(&xml);
 
-        let mut reader = Reader::from_str(&contents);
-        reader.config_mut().trim_text(true);
-        let config: Config = from_str(&contents)?;
+        // loop {
+        //    //TODO: config.rs test suite code goes here
+        // }
 
-        loop {
-            match reader.read_event() {
-                //TODO: nonsense code ---refactor with custom deserializer
-                Ok(Event::Start(e)) if e.name().as_ref() == b"rule" => {
-                    let rule_text = reader
-                        .read_text(e.name())
-                        // .map_err(|e| format!("Error reading text at position {}: {:?}", reader.buffer_position(), e))?;
-                        .map_err(|e| {
-                            quick_xml::DeError::Custom(format!(
-                                "Error reading text at position {}: {:?}",
-                                reader.buffer_position(),
-                                e
-                            ))
-                        })?;
-                    //config.config_rules.push(RuleType::new(rule_text));
-                }
-                Ok(Event::Eof) => break,
-                Err(_e) => {
-                    //This ones never return since we have derivve Deserialize and custom deserializer fn in src/config/config.rs
-                    return Err(Error::SerdeError(quick_xml::DeError::Custom("never thrown -.-".to_string())));
-                }
-                _ => (),
-            }
-        }
-
-        Ok(config)
+        let _config: Config = from_str(&xml)?;
+        Ok(_config)
     }
 
+    // **example** of attribute parsing
+
+    // fn handle_terminal(e: BytesStart) -> RtResult<String> {
+    //     let name = String::from_utf8(e.name().0.into())?;
+    //     let action = find_ros_action(name.as_str())
+    //         .ok_or(RuntimeError::WrongArgument(format!(r#"ros analogue not found for node {:?}. Check the import "ros::nav2""#, name)))?;
+    //     let mut args = vec![];
+
+    //     for attr_res in e.attributes() {
+    //         let attr = attr_res?;
+    //         let key = String::from_utf8(attr.key.0.to_vec())?;
+    //         let v_str = String::from_utf8(attr.value.to_vec())?;
+    //         if v_str.starts_with("{") && v_str.ends_with("}") {
+    //             let value = v_str.trim_start_matches("{").trim_end_matches("}");
+    //             args.push(RtArgument::new(key, RtValue::Pointer(value.to_string())).to_string());
+    //         } else {
+    //             let param = find_action(&action, key.clone())?;
+    //             let argument = RtArgument::new(key, convert_arg(&action, v_str, param)?);
+    //             args.push(argument.to_string());
+    //         }
+    //     }
+
+    //     Ok(format!("{}({})", action.name, args.join(", ")))
+    // }
+
+    /// continuously reads config
     async fn watch_config_changes(&self) {
         let mut one_sec = tokio::time::interval(std::time::Duration::from_secs(1));
 
@@ -90,30 +99,12 @@ impl ConfigurationService {
             one_sec.tick().await;
 
             match Self::read_config(self.config_path.to_str().unwrap()).await {
-                Ok(new_config) => {
-                    // Preserve the non-deserialized config_rules from the current config
-                    // let current_config = self.rx.borrow();
-                    // new_config.config_rules = current_config.config_rules.clone();
-
-                    if new_config != *self.rx.borrow() {
-                        //clone ?
-                        if let Err(e) = self.tx.send(new_config) {
-                            eprintln!("Failed to send XML config update: {}", e);
-                        }
-                    }
-                }
-                Err(e) => eprintln!("Config ERROR: {e}"),
-                // Err(e) => eprintln!("{:?}",DeError::Custom(format!("Config ERROR: {:?}", e))),
+                Ok(_new_cfg) => {}
+                Err(e) => eprintln!(
+                    "--> Config ERROR: {e}" //TODO: At this point we exited the Reader buffer and should have
+                ),
             }
         }
-    }
-    async fn read_config_v1(path: &str) -> core::result::Result<Config, Error> {
-        let mut file = File::open(path).await?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).await?;
-
-        let config: Config = from_str(&contents)?;
-        Ok(config)
     }
 }
 

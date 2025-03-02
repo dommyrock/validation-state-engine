@@ -1,15 +1,15 @@
 use std::str::FromStr;
 use derive_more::From;
-// 'derive_more' - enables us to use From without requiring us to implement Display on each error type.
-use quick_xml::DeError;
+use quick_xml::{events::attributes::AttrError, DeError};
 
 use super::rule_types::RuleType;
+use crate::config::prelude::*;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[allow(unused)]
 
-#[derive(From, Debug)] //Serialize ,serde_as (crate) if we want automatic serialization for "Pretty" web error messages
+#[derive(From, Debug)] 
 pub enum Error {
     ValidationError(RuleType),
 
@@ -19,34 +19,17 @@ pub enum Error {
 
     // Externals
     #[from]
-    StdError(Box<dyn std::error::Error>),
+    Std(Box<dyn std::error::Error>),
     #[from]
-    IoError(std::io::Error),
+    Io(std::io::Error),
     #[from]
-    XMLError(quick_xml::Error),
+    XMLParsing(quick_xml::Error),
     #[from]
-    SerdeError(DeError),
+    Serde(DeError),
     // SerdeError(String, usize),
     #[from]
-    TokioError(tokio::time::error::Error),
+    Tokio(tokio::time::error::Error),
 }
-
-// impl core::fmt::Display for Error {
-//     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-//         match self {
-//             Error::XMLError(msg, pos) => write!(f, "{} at position {}", msg, pos),
-//             _ => write!(f, "{:?}", self),
-//         }
-//     }
-// }
-// impl core::fmt::Display for Error {
-//     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-//         match self {
-//             Error::SerdeError(msg, pos) => write!(f, "{} at position {}", msg, pos),
-//             _ => write!(f, "{:?}", self),
-//         }
-//     }
-// }
 
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
@@ -59,6 +42,13 @@ impl From<&str> for Error {
         Self::ValidationError(RuleType::from_str(s).expect(">> Invalid RuleType <<"))
     }
 }
+
+impl From<AttrError> for Error {
+    fn from(error: AttrError) -> Self {
+        Self::XMLParsing(quick_xml::Error::InvalidAttr(error))
+    }
+}
+impl std::error::Error for Error {}
 
 /* TOOD: 
 We now get info about speciffic RuleType but, we still need some form of fine grained details From RuleValidationError
@@ -82,7 +72,6 @@ impl From<io::Error> for AppError { //AppError = Error in my case
         }
     }
 } */
-impl std::error::Error for Error {}
 
 //cargo test test_errors -- --nocapture
 #[cfg(test)]
@@ -117,42 +106,42 @@ mod tests {
 
     #[test]
     fn test_std_error() {
-        let err = Error::StdError(Box::new(std::io::Error::new(
+        let err = Error::Std(Box::new(std::io::Error::new(
             std::io::ErrorKind::Deadlock,
             "'Deadlock' Error",
         )));
         assert_eq!(
             format!("{}", err),
-            "StdError(Custom { kind: Deadlock, error: \"'Deadlock' Error\" })"
+            "Std(Custom { kind: Deadlock, error: \"'Deadlock' Error\" })"
         );
     }
 
     #[test]
     fn test_io_error() {
-        let err = Error::IoError(std::io::Error::new(
+        let err = Error::Io(std::io::Error::new(
             std::io::ErrorKind::NotADirectory,
             "'NotADirectory' Error",
         ));
         assert_eq!(
             format!("{}", err),
-            "IoError(Custom { kind: NotADirectory, error: \"'NotADirectory' Error\" })"
+            "Io(Custom { kind: NotADirectory, error: \"'NotADirectory' Error\" })"
         );
     }
 
     #[test]
     fn test_xml_error() {
-        let err = Error::XMLError(quick_xml::Error::Io(std::sync::Arc::new(
+        let err = Error::XMLParsing(quick_xml::Error::Io(std::sync::Arc::new(
             std::io::Error::new(std::io::ErrorKind::NotFound, "'NotFound' Error"),
         )));
         assert_eq!(
             format!("{}", err),
-            "XMLError(Io(Custom { kind: NotFound, error: \"'NotFound' Error\" }))"
+            "XMLParsing(Io(Custom { kind: NotFound, error: \"'NotFound' Error\" }))"
         );
     }
 
     #[test]
     fn test_serde_error() {
-        let err = Error::SerdeError(quick_xml::DeError::Custom("Custom Error".into()));
-        assert_eq!(format!("{}", err), "SerdeError(Custom(\"Custom Error\"))");
+        let err = Error::Serde(quick_xml::DeError::Custom("Custom Error".into()));
+        assert_eq!(format!("{}", err), "Serde(Custom(\"Custom Error\"))");
     }
 }
